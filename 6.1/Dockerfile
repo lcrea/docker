@@ -50,7 +50,7 @@ ENV LANG en_US.utf8
 
 
 ##
-# Install Aeroolib + Werkzeug library (old version)
+# Install Aeroolib + Aeroo Reports modules + Werkzeug library (old version)
 #
 # @BUGFIX
 # Python Werkzeug 0.9.x installed by default in Debian it's unable to handle
@@ -64,16 +64,23 @@ ENV LANG en_US.utf8
 # https://github.com/aeroo/aeroolib
 RUN set -x \
     && TMP_PKGS="\
+        bzr \
         git \
         python-pip \
     " \
     && apt-get update \
     && apt-get install -y --no-install-recommends ${TMP_PKGS} \
+    # aeroolib
     && AEROODIR=$(mktemp -d) \
     && git clone -b master --depth 1 "https://github.com/aeroo/aeroolib.git" ${AEROODIR} \
     && cd ${AEROODIR} \
     && python setup.py install \
+    # aeroo reports
+    && bzr branch lp:aeroo/openerp6.1.x /var/lib/aeroo_reports \
+    && rm -rf /var/lib/aeroo_reports/.bzr \
+    # werkzeug
     && pip install werkzeug==0.8.3 \
+    # cleanup
     && apt-get purge -y --auto-remove ${TMP_PKGS} \
     && rm -rf /var/lib/apt/lists/* \
     && rm -rf ${AEROODIR}
@@ -109,6 +116,8 @@ RUN set -x \
     # OpenERP
     && mkdir -pv -m 750 ${OE_PATH} \
     && git clone -b 6.1 --depth 1 "https://github.com/odoo/odoo.git" ${OE_PATH} \
+    && rm -rf ${OE_PATH}/.git* \
+    # cleanup
     && apt-get purge -y --auto-remove ${TMP_PKGS} \
     && rm -rf /var/lib/apt/lists/*
 
@@ -119,24 +128,26 @@ COPY ./entrypoint.sh /
 COPY ./openerp-server.conf /etc/openerp/
 
 RUN set -x \
-    && DIRS=" \
+    && DIRS_NEW=" \
         /mnt/extra-addons \
         /run/openerp \
         ${OE_PATH}/filestore \
+    " \
+    && DIRS_2FIX=" \
+        /etc/openerp \
+        /var/lib/aeroo_reports \
     " \
     # create user and group
     && addgroup --system --gid 600 ${OE_USER} \
     && adduser --home ${OE_PATH} --system --shell /sbin/nologin --gid 600 --uid 600 ${OE_USER} \
     # create default directories
-    && mkdir -pv -m 750 ${DIRS} \
-    && chown -vR ${OE_USER}:${OE_USER} ${DIRS} "/etc/openerp" \
-    && chmod -v 750 "/etc/openerp" \
-    && chmod -v 640 "/etc/openerp/openerp-server.conf" \
-    # fixing OpenERP file permissions
-    && find ${OE_PATH} -exec chown ${OE_USER}:${OE_USER} {} \+ \
-    && find ${OE_PATH} -type d -exec chmod 750 {} \+ \
-    && find ${OE_PATH} -type f -exec chmod 640 {} \+ \
-    && find ${OE_PATH} -type f -name '*.sh' -exec chmod 750 {} \+
+    && mkdir -pv -m 750 ${DIRS_NEW} \
+    # fixing file permissions
+    && find ${OE_PATH} ${DIRS_NEW} ${DIRS_2FIX} -exec chown ${OE_USER}:${OE_USER} {} \+ \
+    && find ${OE_PATH} ${DIRS_NEW} ${DIRS_2FIX} -type d -exec chmod 750 {} \+ \
+    && find ${OE_PATH} ${DIRS_NEW} ${DIRS_2FIX} -type f -exec chmod 640 {} \+ \
+    && find ${OE_PATH} ${DIRS_NEW} ${DIRS_2FIX} -type f -name '*.sh' -exec chmod 750 {} \+ \
+    && chmod 755 /entrypoint.sh
 
 
 VOLUME ["${OE_PATH}/filestore", "/mnt/extra-addons"]
