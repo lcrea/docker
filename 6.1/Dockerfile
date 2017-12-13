@@ -105,7 +105,7 @@ RUN set -x \
     && apt-get install -y --no-install-recommends ${TMP_PKGS} \
     # wkhtmltopdf
     && cd /usr/local/bin \
-    && curl -fSL "http://download.gna.org/wkhtmltopdf/0.12/0.12.4/wkhtmltox-0.12.4_linux-generic-amd64.tar.xz" -o wkhtmltox.tar.xz \
+    && curl -fSL "https://github.com/wkhtmltopdf/wkhtmltopdf/releases/download/0.12.4/wkhtmltox-0.12.4_linux-generic-amd64.tar.xz" -o wkhtmltox.tar.xz \
     && xzdec wkhtmltox.tar.xz > wkhtmltox.tar \
     && tar xvf wkhtmltox.tar wkhtmltox/bin/wkhtmltopdf \
     && mv -v wkhtmltox/bin/wkhtmltopdf . \
